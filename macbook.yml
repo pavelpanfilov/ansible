@@ -2,7 +2,13 @@
   hosts: localhost
   gather_facts: false
 
+  vars_prompt:
+    - name: git_user_email
+      prompt: git user.email
+      private: false
+
   vars:
+    git_user_name: Pavel Panfilov
     brew_prefix: /opt/homebrew
     kube_editor: /usr/bin/nano
     login_shell: /bin/bash
@@ -59,11 +65,45 @@
         name: "{{ brew_formulae }}"
         state: present
 
+    - name: Configure git
+      community.general.git_config:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        scope: global
+      loop: "{{ {'user.name': git_user_name, 'user.email': git_user_email} | dict2items }}"
+      tags: git
+
+    - name: Get cask info
+      ansible.builtin.command: "{{ brew_prefix }}/bin/brew info --cask --json=v2 {{ brew_casks | join(' ') }}"
+      register: cask_info
+      changed_when: false
+      check_mode: false
+
+    - name: Find apps installed outside brew (e.g. MDM)
+      ansible.builtin.stat:
+        path: "{{ app.target | default('/Applications/' ~ app.app[0]) }}"
+      vars:
+        app: "{{ item.artifacts | selectattr('app', 'defined') | first }}"
+      loop: "{{ (cask_info.stdout | from_json).casks | rejectattr('installed') | list }}"
+      loop_control:
+        label: "{{ item.token }}"
+      when: item.artifacts | selectattr('app', 'defined') | list | length > 0
+      register: external_apps
+
+    - name: Pick casks to install
+      ansible.builtin.set_fact:
+        external_casks: "{{ external_apps.results | selectattr('stat', 'defined') | selectattr('stat.exists') | map(attribute='item.token') | list }}"
+
+    - name: Report casks installed outside brew
+      ansible.builtin.debug:
+        msg: "Skipped: {{ external_casks | join(', ') }}"
+      when: external_casks | length > 0
+
     - name: Install casks
       community.general.homebrew_cask:
-        name: "{{ brew_casks }}"
+        name: "{{ brew_casks | difference(external_casks) }}"
         state: present
-        accept_external_apps: true
+      when: brew_casks | difference(external_casks) | length > 0
 
     - name: Install gcloud components
       ansible.builtin.command: >-
