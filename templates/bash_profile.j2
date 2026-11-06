@@ -1,0 +1,40 @@
+# {{ ansible_managed }}
+
+# path
+eval "$({{ brew_prefix }}/bin/brew shellenv)"
+export PATH="$HOME/.local/bin:$PATH"
+
+# global vars
+export BASH_SILENCE_DEPRECATION_WARNING=1
+export KUBE_EDITOR={{ kube_editor }}
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+
+# Google Cloud SDK (gke-gcloud-auth-plugin etc.)
+GCLOUD_SDK="{{ brew_prefix }}/share/google-cloud-sdk"
+[ -f "$GCLOUD_SDK/path.bash.inc" ] && source "$GCLOUD_SDK/path.bash.inc"
+[ -f "$GCLOUD_SDK/completion.bash.inc" ] && source "$GCLOUD_SDK/completion.bash.inc"
+
+# autocompletes
+source ~/.kube-completion.sh
+command -v scw >/dev/null && eval "$(scw autocomplete script shell=bash)"
+command -v aws_completer >/dev/null && complete -C aws_completer aws
+command -v just >/dev/null && eval "$(just --completions bash)"
+
+# aliases
+alias tf="terraform"
+alias k='kubectl'
+alias kex='kubectl exec -i -t'
+alias kc='kubectl config use-context'
+alias kx='kubectl config get-contexts'
+alias kn='kubectl config set-context --current --namespace'
+alias kr='kubectl rollout restart deployment'
+alias knp='kubectl get pods --all-namespaces -o wide --sort-by="{.spec.nodeName}"'
+alias passgen='openssl rand -base64 24'
+
+# prompt
+NORMAL="\[\033[00m\]"
+BLUE="\[\033[01;34m\]"
+YELLOW="\[\e[1;33m\]"
+GREEN="\[\e[1;32m\]"
+source ~/.kube-prompt.sh
+export PS1="${BLUE}\W ${GREEN}\u${YELLOW}\$(__kube_ps1)${NORMAL} \$ "

@@ -1,0 +1,96 @@
+- name: Setup work MacBook
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    brew_prefix: /opt/homebrew
+    kube_editor: /usr/bin/nano
+    login_shell: /bin/bash
+
+    brew_formulae:
+      - git
+      - kubernetes-cli
+      - kubectx
+      - awscli
+      - scw
+      - ansible
+      - python@3.15
+      - uv
+      - just
+
+    brew_casks:
+      - dbeaver-community
+      - gcloud-cli
+      - t3-code
+      - claude
+      - claude-code
+      - slack
+      - zen
+      - visual-studio-code
+      - ghostty
+      - bitwarden
+      - 1password
+      - telegram-desktop
+      - freelens
+
+    gcloud_components:
+      - gke-gcloud-auth-plugin
+
+  tasks:
+    - name: Check Xcode Command Line Tools
+      ansible.builtin.command: xcode-select -p
+      register: clt
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Install Xcode Command Line Tools
+      ansible.builtin.script: files/install-clt.sh
+      become: true
+      when: clt.rc != 0
+      tags: clt
+
+    - name: Update Homebrew
+      community.general.homebrew:
+        update_homebrew: true
+
+    - name: Install formulae
+      community.general.homebrew:
+        name: "{{ brew_formulae }}"
+        state: present
+
+    - name: Install casks
+      community.general.homebrew_cask:
+        name: "{{ brew_casks }}"
+        state: present
+        accept_external_apps: true
+
+    - name: Install gcloud components
+      ansible.builtin.command: >-
+        {{ brew_prefix }}/bin/gcloud components install {{ item }} --quiet
+      args:
+        creates: "{{ brew_prefix }}/share/google-cloud-sdk/bin/{{ item }}"
+      loop: "{{ gcloud_components }}"
+
+    - name: Install kube shell scripts
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "~/.{{ item }}"
+        mode: "0644"
+      loop:
+        - kube-prompt.sh
+        - kube-completion.sh
+
+    - name: Configure ~/.bash_profile
+      ansible.builtin.template:
+        src: bash_profile.j2
+        dest: ~/.bash_profile
+        mode: "0644"
+        backup: true
+
+    - name: Set login shell
+      ansible.builtin.user:
+        name: "{{ lookup('env', 'USER') }}"
+        shell: "{{ login_shell }}"
+      become: true
+      tags: shell
