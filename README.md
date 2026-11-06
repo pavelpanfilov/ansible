@@ -4,7 +4,7 @@ Ansible playbooks for random stuff
 
 ## MacBook setup
 
-Installs Xcode Command Line Tools, Homebrew, git, work apps (formulae + casks), and configures `~/.bash_profile` with kube prompt and context/namespace autocompletion.
+Installs Xcode Command Line Tools, Homebrew, git, work apps (formulae + casks), and configures git, `~/.claude/CLAUDE.md` and `~/.bash_profile` (kube prompt, context/namespace autocompletion).
 
 ### New computer
 

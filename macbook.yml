@@ -128,6 +128,21 @@
         mode: "0644"
         backup: true
 
+    - name: Create ~/.claude
+      ansible.builtin.file:
+        path: ~/.claude
+        state: directory
+        mode: "0700"
+      tags: claude
+
+    - name: Install Claude global instructions
+      ansible.builtin.copy:
+        src: claude/CLAUDE.md
+        dest: ~/.claude/CLAUDE.md
+        mode: "0644"
+        backup: true
+      tags: claude
+
     - name: Set login shell
       ansible.builtin.user:
         name: "{{ lookup('env', 'USER') }}"
